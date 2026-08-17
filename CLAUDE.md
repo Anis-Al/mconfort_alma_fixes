@@ -1,6 +1,6 @@
 # mconfort_alma_fixes
 
-Odoo 19 module. Three corrections to the Alma widget shipped by
+Odoo 19 module. Four corrections to the Alma widget shipped by
 `mconfort_alma_widgets`. Assets only — no models, no views, no data.
 
 Depends on `mconfort_alma_widgets`, so its bundle entries load **after** the parent's and win at
@@ -9,8 +9,12 @@ attribute written by the parent's JS.
 
 | File | Fixes |
 |---|---|
-| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow), 3 (checkout card height) |
+| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow), 3 (checkout card height), 4 (modal height on mobile) |
 | `static/src/js/alma_qty.js` | 2 (amount follows the qty box) |
+
+Git: repo lives in this directory, `main` tracks
+`https://github.com/Anis-Al/mconfort_alma_fixes.git`. Commits carry the user's name only — no
+`Co-Authored-By` trailer.
 
 ## Where the parent lives
 
@@ -123,6 +127,29 @@ into the label. Marked `ponytail:` in the SCSS.
 Note `alma_1x` gets **no** badge — `mconfort_alma_checkout_badges` matches
 `installments_count >= 2` (free) or `>= 5` (credit); 1 falls through both.
 
+## Fix 4 — the 10x/12x modal ate the whole mobile viewport
+
+`renderModalSchedule()` emits **one `.o-alma-modal__schedule-row` per installment**, so 12x means 12
+rows (~33px each) stacked under the title, the three steps, the `alma` wordmark and the plan pills,
+with the total/fees block below. At 375x812 the dialog reached **696px** — 86% of the screen.
+
+From the **6th row on**, the schedule scrolls inside its own box (`max-height: 32vh`,
+`overscroll-behavior: contain`) instead of stretching the dialog; rows and the surrounding blocks
+also tighten. 2x/3x/4x are untouched.
+
+The row count is exposed nowhere as a class or dataset attribute, so the condition is
+`:has(> .o-alma-modal__schedule-row:nth-child(6))`. Without `:has()` support the rule simply never
+matches and the old behaviour (whole dialog scrolls) remains — no JS, no row counter.
+
+Measured at 375x812 with 12 rows: dialog **696 → 578px**, schedule 260px for a 378px scroll height,
+summary bottom at 780px, dialog itself not scrollable. At 375x667: dialog 532px, total still on
+screen. With 4 rows the cap does not apply (`max-height: none`).
+
+**The real 12x rows never rendered.** `/mconfort/alma/widget/schedule` answered
+`Donnees indisponibles` and the total stayed `-` — that endpoint calls the Alma API and this box
+can't reach it, so the rows above were **injected by hand** in the console to exercise the CSS.
+Selectors and geometry are real; a live credit schedule has never been seen.
+
 ## Rejected — product-page card redesign (2026-08-17, 16:0x)
 
 A full restyle of the product-page card (white card, `1px #e6e6e6`, wordmark **Alma** via
@@ -130,16 +157,18 @@ A full restyle of the product-page card (white card, `1px #e6e6e6`, wordmark **A
 built, measured, then **scrapped at the user's request**. Fix 1's wrap-the-recap patch is what
 ships. Do not re-propose it unless asked.
 
-## Verification status (2026-08-17, 16:0x)
+## Verification status (2026-08-17, 17:2x)
 
 | Fix | Status |
 |---|---|
 | 1 | Overflow **measured** before the fix; after the fix, measured in the *redesigned* card only — the reverted version's result is **not** re-measured. |
 | 2 | Logic **not** exercised in a browser. |
 | 3 | **Blind.** No rendered checkout was ever inspected. |
+| 4 | Geometry **measured** at 375x812 and 375x667 — but on **injected** rows, not a live Alma credit schedule. |
 
 `mconfort` was restored and the module upgraded clean at 16:04:29 (`Registry loaded in 15.169s`,
-no traceback). Both bundles build: `web.assets_frontend.min.css` 200 (`5218789`) and
+no traceback), and again at 17:25:49 for fix 4. Both bundles build:
+`web.assets_frontend.min.css` 200 (`5218789`, then `597a61d` after the redesign revert) and
 `web.assets_frontend_lazy.min.js` 200, 3.63 MB, containing both the parent widget and
 `mc-alma-qty-total`. The earlier "JS bundle has never built" note was the dropped-db 500, not a
 code error.
@@ -189,3 +218,20 @@ setTimeout(() => console.log(document.querySelector('.mc-alma-qty-total')?.textC
 ```
 
 At 195,00 € × 3 the recap must read `12 x 48,75 €`, and `.mc-alma-qty-total` must hold `585.00`.
+
+### Checking fix 4 by hand
+
+Open the modal on any plan, then fake a long schedule — the Alma endpoint is unreachable from this
+box, so 12x renders `Donnees indisponibles` on its own. Viewport 375x812:
+
+```js
+document.querySelector('.js-alma-widget .o-alma-widget__option:not(.is-disabled)').click();
+const s = document.querySelector('.o-alma-modal__schedule');
+const d = document.querySelector('.o-alma-modal__dialog');
+s.innerHTML = Array.from({length: 12}, (_, i) =>
+    `<div class="o-alma-modal__schedule-row"><span>ligne ${i + 1}</span><span>14,63 €</span></div>`).join('');
+[getComputedStyle(s).maxHeight, s.scrollHeight, Math.round(d.getBoundingClientRect().height)]
+```
+
+Expect roughly `["259.84px", 378, 578]` — cap at 32vh, list overflowing it, dialog well under the
+812px viewport. Drop to 4 rows and `max-height` must read `none`.

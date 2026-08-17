@@ -118,3 +118,40 @@
     background: var(--mc-gold);
     color: #ffffff;
 }
+
+/* ------------------------------------------------------------
+   4. Modale : 10x / 12x remplissent l'ecran en mobile.
+   L'echeancier a une ligne par versement, donc 12 lignes de 33px
+   plus le titre, les 3 etapes, le logo, le selecteur et le total.
+   A partir de la 6e ligne, l'echeancier defile a l'interieur
+   (max-height) au lieu d'allonger la modale : le total et les
+   frais restent visibles sans scroller toute la modale.
+   Le nombre de lignes n'est expose nulle part en classe CSS,
+   d'ou :has() ; sans support :has le comportement actuel
+   (modale entiere scrollable) subsiste.
+   ponytail: pas de JS, pas de compteur de lignes en dataset.
+   ------------------------------------------------------------ */
+
+@media (max-width: 767.98px) {
+
+    .o-alma-modal__schedule:has(> .o-alma-modal__schedule-row:nth-child(6)) {
+        max-height: 32vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    /* Lignes plus serrees quand la liste est longue. */
+    .o-alma-modal__schedule:has(> .o-alma-modal__schedule-row:nth-child(6))
+        .o-alma-modal__schedule-row {
+        padding: 6px 0;
+        font-size: 12.5px;
+    }
+
+    /* Et le reste du contenu se resserre dans le meme cas. */
+    .o-alma-modal__dialog:has(.o-alma-modal__schedule-row:nth-child(6)) {
+        .o-alma-modal__title { margin-bottom: 12px; }
+        .o-alma-modal__steps { margin-top: 12px; gap: 7px; }
+        .o-alma-modal__step { font-size: 11.5px; }
+        .o-alma-modal__brand { margin-top: 12px; }
+    }
+}
