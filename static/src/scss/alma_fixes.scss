@@ -1,0 +1,120 @@
+/* ============================================================
+   mconfort Alma Widgets - correctifs
+   Charge apres mconfort_alma_widgets (dependance du module).
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. Porteur du montant "prix unitaire x quantite" (alma_qty.js)
+   Doit rester "visible" au sens de getComputedStyle : le widget
+   parent ignore display:none / visibility:hidden / .d-none.
+   ------------------------------------------------------------ */
+
+.mc-alma-qty-total {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ------------------------------------------------------------
+   2. Fiche produit + panier : le widget deborde en mobile.
+   La ligne recap ("12 x 16,25 EUR") est tronquee car le widget
+   est en flex-wrap:nowrap avec max-width:max-content. On la
+   passe sur une deuxieme ligne pleine largeur.
+   ------------------------------------------------------------ */
+
+@media (max-width: 767.98px) {
+
+    #product_details .o-alma-widget,
+    .tp-product-right-panel .o-alma-widget,
+    .o-alma-cart-widget {
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+        row-gap: 4px;
+        padding: 8px 12px;
+        border-radius: var(--mc-radius);
+    }
+
+    #product_details .o-alma-widget .o-alma-widget__options,
+    .tp-product-right-panel .o-alma-widget .o-alma-widget__options,
+    .o-alma-cart-widget .o-alma-widget__options {
+        flex-wrap: wrap;
+        row-gap: 4px;
+        min-width: 0;
+    }
+
+    #product_details .o-alma-widget .o-alma-widget__payment-info,
+    .tp-product-right-panel .o-alma-widget .o-alma-widget__payment-info,
+    .o-alma-cart-widget .o-alma-widget__payment-info {
+        flex: 1 0 100%;
+        width: 100%;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        line-height: 1.35;
+    }
+
+    /* Deux lignes desormais : la hauteur reservee au chargement suit. */
+    #product_details .o-alma-widget.is-loading,
+    .tp-product-right-panel .o-alma-widget.is-loading,
+    .o-alma-cart-widget.is-loading {
+        min-height: 58px;
+    }
+}
+
+@media (max-width: 389.98px) {
+
+    #product_details .o-alma-widget .o-alma-widget__option,
+    .tp-product-right-panel .o-alma-widget .o-alma-widget__option,
+    .o-alma-cart-widget .o-alma-widget__option {
+        height: 20px;
+        padding: 0 7px;
+        font-size: 11px;
+    }
+}
+
+/* ------------------------------------------------------------
+   3. Checkout : la carte Alma groupee (1x/2x/3x/4x, alma_1x
+   selectionne par defaut) portait en plus l'echeancier deplie,
+   ce qui la rendait bien plus haute que les autres methodes.
+   Le badge "Frais de paiement offerts" et le selecteur de plan
+   suffisent a ce niveau ; le detail reste visible sur 10x/12x,
+   ou il porte l'information de credit.
+   ponytail: si la parite exacte est voulue, masquer aussi
+   .o-mconfort-alma-plan-switch et remettre le choix du plan
+   dans le libelle.
+   ------------------------------------------------------------ */
+
+.o_payment_form li[name="o_payment_option"].o-mconfort-alma-option.o-mconfort-alma-group-current
+    [name="alma_description"] {
+    display: none !important;
+}
+
+.o_payment_form li[name="o_payment_option"].o-mconfort-alma-option .o-mconfort-alma-plan-switch {
+    display: flex;
+    gap: 4px;
+    margin-top: 2px;
+    margin-left: 1.5rem;
+}
+
+.o_payment_form li[name="o_payment_option"].o-mconfort-alma-option .o-mconfort-alma-plan-switch__btn {
+    height: 22px;
+    padding: 0 9px;
+    border: 1.5px solid rgba(30, 58, 95, 0.2);
+    border-radius: var(--mc-radius-pill);
+    background: transparent;
+    color: var(--mc-navy);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.o_payment_form li[name="o_payment_option"].o-mconfort-alma-option .o-mconfort-alma-plan-switch__btn.is-active {
+    border-color: var(--mc-gold);
+    background: var(--mc-gold);
+    color: #ffffff;
+}
