@@ -1,7 +1,7 @@
 # mconfort_alma_fixes
 
-Odoo 19 module. Four corrections to the Alma widget shipped by
-`mconfort_alma_widgets`. Assets only — no models, no views, no data.
+Odoo 19 module. Corrections to the Alma widget shipped by `mconfort_alma_widgets`.
+Assets only — no models, no views, no data.
 
 Depends on `mconfort_alma_widgets`, so its bundle entries load **after** the parent's and win at
 equal specificity. Nothing here uses `!important` except where it must beat an inline `style`
@@ -9,8 +9,11 @@ attribute written by the parent's JS.
 
 | File | Fixes |
 |---|---|
-| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow), 3 (checkout card height), 4 (modal height on mobile) |
+| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow, product page), 3 (checkout card height), 4 (modal height on mobile), 5b + 5c (the cart card) |
 | `static/src/js/alma_qty.js` | 2 (amount follows the qty box), 5 (cart amount follows the cart qty) |
+
+Read the fixes in order. **5b is superseded by 5c** — it is kept because it records what the parent
+does and why, not because its rules still stand.
 
 Git: repo lives in this directory, `main` tracks
 `https://github.com/Anis-Al/mconfort_alma_fixes.git`. Commits carry the user's name only — no
@@ -44,9 +47,10 @@ Measured on `/shop/tablebar-valence-code-table-bar-krys-chene-606` at 375x812, b
 `.o-alma-widget__payment-info` has `overflow: hidden` so nothing spills visibly — the recap text is
 just **clipped**. That's the "tiny overflow".
 
-Fix: below 768px the product/cart widget wraps and the recap line takes `flex: 1 0 100%`. Border
+Fix: below 768px the **product page** widget wraps and the recap line takes `flex: 1 0 100%`. Border
 radius drops from pill to `--mc-radius` because a pill around a two-line box looks wrong, and
-`.is-loading` min-height goes 38px → 58px to match the new two-line height.
+`.is-loading` min-height goes 38px → 58px to match the new two-line height. The cart widget was in
+this media query too until fix 5c gave it its own unconditional block — do not add it back.
 
 Content fits after the change: 319px available at 375px viewport, logo (31.5) + gap (10) +
 options (208.3) = 250. `flex-wrap` on `.o-alma-widget__options` is belt-and-braces for ≤320px.
@@ -145,10 +149,18 @@ Measured at 375x812 with 12 rows: dialog **696 → 578px**, schedule 260px for a
 summary bottom at 780px, dialog itself not scrollable. At 375x667: dialog 532px, total still on
 screen. With 4 rows the cap does not apply (`max-height: none`).
 
-**The real 12x rows never rendered.** `/mconfort/alma/widget/schedule` answered
-`Donnees indisponibles` and the total stayed `-` — that endpoint calls the Alma API and this box
-can't reach it, so the rows above were **injected by hand** in the console to exercise the CSS.
-Selectors and geometry are real; a live credit schedule has never been seen.
+**Confirmed on a live schedule (2026-08-18).** The endpoint answers now — `12x` renders 12 real
+rows (`Aujourd'hui 17.86 EUR`, then 11 x `17.84 EUR`, `Total 214.1 EUR`, `Dont frais 19.1 EUR`).
+Measured on the product page:
+
+| viewport | rows | `max-height` | schedule scroll / client | dialog | total row |
+|---|---|---|---|---|---|
+| 375x812 | 12 | 259.84px | 380 / 260 | 578px (226→804), not scrollable | bottom 780, visible |
+| 375x667 | 12 | 213.44px | 380 / 213 | 532px (127→659) | bottom 635, visible |
+| 375x667 | 3 | `none` | — | 445px | visible |
+
+The numbers match what the hand-injected rows predicted (578px dialog, ~378 scroll height), so the
+original blind measurement held.
 
 ## Fix 5 — the cart amount stayed on the qty the page loaded with
 
@@ -199,7 +211,11 @@ Net effect: `mountWidgets(document)` → `mountCartAlmaWidget()` → fresh total
 
 The detail modal follows for free — it reads the same `_almaSourceNode`.
 
-## Fix 5b — the cart card did not look like the product-page one
+## Fix 5b — the cart card did not look like the product-page one (superseded by 5c)
+
+**Only the `border-top-color` survives from this section.** The `justify-content` rule moved out of
+the media query and the "desktop keeps the centred pill" conclusion is wrong — see fix 5c. Kept for
+the parent-behaviour notes.
 
 Two separate causes, both in the parent's `.o-alma-cart-widget` block. Computed styles at 375px,
 before:
@@ -221,9 +237,9 @@ widget was a bare row under the cart total. Now that `.o-alma-widget` draws a fu
 leaves one edge in a different tone. `border-top-color: var(--mc-border)` plus `margin-top: 8px`,
 **outside** the media query so the desktop pill matches too.
 
-After: every listed prop matches the product-page card at 375px and at 1280x800. The remaining
-height gap (cart 58px vs product 70px) is content, not styling — the product page had `12x` active,
-which adds the "Frais de credit inclus" second line.
+At that point every listed prop matched the product-page card at 375px and at 1280x800 — but the
+desktop card was still broken in a way this comparison did not catch, because it compared computed
+values rather than the rendered box. Fix 5c.
 
 ## Fix 5c — the cart recap was clipped on desktop too
 
@@ -291,7 +307,7 @@ ships. Do not re-propose it unless asked.
 | 1 | Overflow **measured** before the fix; after the fix, measured in the *redesigned* card only — the reverted version's result is **not** re-measured. |
 | 2 | Logic **not** exercised in a browser. |
 | 3 | **Blind.** No rendered checkout was ever inspected. |
-| 4 | Geometry **measured** at 375x812 and 375x667 — but on **injected** rows, not a live Alma credit schedule. |
+| 4 | Geometry **measured** at 375x812 and 375x667 on **injected** rows; re-measured 2026-08-18 on a **live 12x schedule** and confirmed. |
 
 ### 2026-08-18
 
@@ -303,9 +319,8 @@ ships. Do not re-propose it unless asked.
 | 5c | **Measured** at 992, 1920 and 375, on **all five plans** (2x/3x/4x/10x/12x). No clipping, nothing past the padding box, card fills the summary column. |
 | 5 | Re-verified after the comment strip: qty 5→6 moved the total to 1 170,00 € and the recap to `12 x 97,50 €`, no stray `body > .product_price`. |
 
-Also observed on 2026-08-18: `/mconfort/alma/widget/schedule` **did** answer — the 2x modal
-rendered a real two-line schedule with `Total 975,00 €` / `Dont frais 0,00 €`. The "endpoint
-unreachable from this box" note under fix 4 is no longer true for the non-credit plans at least.
+`/mconfort/alma/widget/schedule` answers from this box now, credit plans included, so fix 4 is no
+longer blind — see its section for the live numbers.
 
 `mconfort` was restored and the module upgraded clean at 16:04:29 (`Registry loaded in 15.169s`,
 no traceback), and again at 17:25:49 for fix 4. Both bundles build:
@@ -360,19 +375,45 @@ setTimeout(() => console.log(document.querySelector('.mc-alma-qty-total')?.textC
 
 At 195,00 € × 3 the recap must read `12 x 48,75 €`, and `.mc-alma-qty-total` must hold `585.00`.
 
+### Checking fix 5 / 5c by hand
+
+`/shop/cart` with a line qty > 1. Works at any width — the cart summary column is ~320-410px
+whatever the viewport, so the card is always the constrained case.
+
+```js
+const w = document.querySelector('.o-alma-cart-widget');
+const info = w.querySelector('.o-alma-widget__payment-info');
+const padR = parseFloat(getComputedStyle(w).paddingRight);
+
+// fix 5c: no plan may clip the recap or push past the padding box
+[...w.querySelectorAll('.o-alma-widget__option')].map(o => {
+    o.click(); document.querySelector('.o-alma-modal__close')?.click();
+    const ib = info.getBoundingClientRect(), nb = w.getBoundingClientRect();
+    return [o.textContent.trim(), info.scrollWidth > info.clientWidth,
+            Math.round(ib.right - (nb.right - padR)), Math.round(nb.height)];
+});
+
+// fix 5: bump the qty, the recap must follow the cart total
+document.querySelectorAll('.js_quantity')[0].parentElement.querySelector('a:last-of-type').click();
+setTimeout(() => console.log(w._almaSourceNode.innerText, info.textContent), 1500);
+```
+
+Every plan must read `false` for clipping and a negative offset. `_almaSourceNode` must equal the
+new `tr[name='o_order_total']` value, and `document.querySelectorAll('body > .product_price').length`
+must be `0`.
+
 ### Checking fix 4 by hand
 
-Open the modal on any plan, then fake a long schedule — the Alma endpoint is unreachable from this
-box, so 12x renders `Donnees indisponibles` on its own. Viewport 375x812:
+The Alma endpoint answers now, so `12x` renders 12 real rows on its own — no injection needed.
+Viewport 375x812:
 
 ```js
 document.querySelector('.js-alma-widget .o-alma-widget__option:not(.is-disabled)').click();
 const s = document.querySelector('.o-alma-modal__schedule');
 const d = document.querySelector('.o-alma-modal__dialog');
-s.innerHTML = Array.from({length: 12}, (_, i) =>
-    `<div class="o-alma-modal__schedule-row"><span>ligne ${i + 1}</span><span>14,63 €</span></div>`).join('');
-[getComputedStyle(s).maxHeight, s.scrollHeight, Math.round(d.getBoundingClientRect().height)]
+[s.querySelectorAll('.o-alma-modal__schedule-row').length, getComputedStyle(s).maxHeight,
+ s.scrollHeight, Math.round(d.getBoundingClientRect().height)]
 ```
 
-Expect roughly `["259.84px", 378, 578]` — cap at 32vh, list overflowing it, dialog well under the
-812px viewport. Drop to 4 rows and `max-height` must read `none`.
+At `12x` expect `[12, "259.84px", 380, 578]` — cap at 32vh, list overflowing it, dialog well under
+the 812px viewport. On a plan with fewer than 6 rows `max-height` must read `none`.
