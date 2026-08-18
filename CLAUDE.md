@@ -199,14 +199,31 @@ Net effect: `mountWidgets(document)` → `mountCartAlmaWidget()` → fresh total
 
 The detail modal follows for free — it reads the same `_almaSourceNode`.
 
-## Fix 5b — the cart card was half-centred on mobile
+## Fix 5b — the cart card did not look like the product-page one
 
-The parent gives `.o-alma-cart-widget` `justify-content: center`. Fine while the card is one line;
-once fix 1 wraps it at ≤767.98px the logo and the plan pills stay centred while the recap line,
-being `flex: 1 0 100%`, sits flush left. Measured at 375x812: logo `x=81`, recap `x=28`.
+Two separate causes, both in the parent's `.o-alma-cart-widget` block. Computed styles at 375px,
+before:
 
-`justify-content: flex-start` in the same media query, so the card reads like the product-page one.
+| prop | product page | cart |
+|---|---|---|
+| `justify-content` | `normal` | `center` |
+| `border-top` | `0.8px solid rgba(30,58,95,.14)` | `0.8px solid rgb(232,232,232)` |
+| `margin-top` | 8px | 12px |
+| padding / radius / gap / background / width | identical | identical |
+
+**Centring.** Harmless while the card is one line; once fix 1 wraps it at ≤767.98px the logo and
+the plan pills stay centred while the recap line, being `flex: 1 0 100%`, sits flush left. Measured
+at 375x812: logo `x=81`, recap `x=28`. `justify-content: flex-start` in the same media query.
 Desktop keeps the centred pill — verified unchanged at 1280x800 (`center` / `nowrap`, 34px tall).
+
+**Top border.** The parent writes `border-top: 1px solid #e8e8e8` — a separator line from when the
+widget was a bare row under the cart total. Now that `.o-alma-widget` draws a full border, that
+leaves one edge in a different tone. `border-top-color: var(--mc-border)` plus `margin-top: 8px`,
+**outside** the media query so the desktop pill matches too.
+
+After: every listed prop matches the product-page card at 375px and at 1280x800. The remaining
+height gap (cart 58px vs product 70px) is content, not styling — the product page had `12x` active,
+which adds the "Frais de credit inclus" second line.
 
 ## Rejected — product-page card redesign (2026-08-17, 16:0x)
 
@@ -230,7 +247,7 @@ ships. Do not re-propose it unless asked.
 |---|---|
 | 2 | Now **measured** on the product page: 195,00 € at qty 2 gives `.mc-alma-qty-total` = `390.00` and the recap `12 x 32,50 €`. |
 | 5 | **Measured** on `/shop/cart` at 375x812 and 1280x800: qty 4→5→6 moved the total 780 → 975 → 1 170 and the recap followed (`4 x 195,00` → `4 x 243,75` → `4 x 292,50`); the minus button back to 5 followed too. No stray `body > .product_price`. The modal read `Total 975,00 €`. |
-| 5b | **Measured** at 375x812 (logo and recap both at `x=28`) and 1280x800 (unchanged). |
+| 5b | **Measured** at 375x812 (logo and recap both at `x=28`; border-top and margin now match the product card) and 1280x800 (pill unchanged, border-top normalised). |
 
 Also observed on 2026-08-18: `/mconfort/alma/widget/schedule` **did** answer — the 2x modal
 rendered a real two-line schedule with `Total 975,00 €` / `Dont frais 0,00 €`. The "endpoint

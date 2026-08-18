@@ -19,6 +19,20 @@
 }
 
 /* ------------------------------------------------------------
+   1b. Panier : le parent trace un filet separateur en haut du
+   widget (border-top: 1px solid #e8e8e8, herite de l'epoque ou
+   le widget n'etait qu'une ligne sous le total). Depuis que la
+   carte porte une bordure complete, ce filet donne un bord
+   superieur d'une autre teinte que les trois autres cotes.
+   On reprend la couleur et la marge de la fiche produit.
+   ------------------------------------------------------------ */
+
+.o-alma-cart-widget {
+    border-top-color: var(--mc-border);
+    margin-top: 8px;
+}
+
+/* ------------------------------------------------------------
    2. Fiche produit + panier : le widget deborde en mobile.
    La ligne recap ("12 x 16,25 EUR") est tronquee car le widget
    est en flex-wrap:nowrap avec max-width:max-content. On la
