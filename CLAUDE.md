@@ -9,7 +9,7 @@ attribute written by the parent's JS.
 
 | File | Fixes |
 |---|---|
-| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow, product page), 3 (checkout card height), 4 (modal height on mobile), 5b + 5c + 5d (the cart card) |
+| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow, product page), 3 (checkout card height), 4 (modal height on mobile), 5b + 5c + 5d (the cart card), 9 (the plan switch) |
 | `static/src/js/alma_qty.js` | 2 (amount follows the qty box), 5 (cart amount follows the cart qty), 6 (the 1x label at checkout) |
 | `views/checkout_1x_badge.xml` | 7 (the missing 1x badge at checkout) |
 | `views/checkout_1x_logo.xml` + `static/src/img/p1x_logo.svg` | 8 (the 1x logo had no plan chip) |
@@ -121,14 +121,12 @@ logo row:
 The schedule panel is the height. `10x` / `12x` are **not** grouped (`buildAlmaGroup` filters
 `count <= 4`) and render as one compact row plus a badge.
 
-Fix hides the schedule on the grouped card only, and gives the plan switch explicit compact styling.
-`!important` is required — it beats the inline `display:block` the parent's JS writes.
+Fix hides the schedule on the grouped card only. `!important` is required — it beats the inline
+`display:block` the parent's JS writes. The plan switch used to get compact styling here; fix 9
+hides it outright instead.
 
 `10x` / `12x` keep their schedule on purpose: those are credit plans and the panel carries the fee
 disclosure. Do not widen the selector to all `.o-mconfort-alma-option` without checking that.
-
-If exact height parity is wanted, hide `.o-mconfort-alma-plan-switch` too and move the plan choice
-into the label.
 
 Note `alma_1x` used to get **no** badge — `mconfort_alma_checkout_badges` matches
 `installments_count >= 2` (free) or `>= 5` (credit), so 1 fell through both. Fix 7 adds the branch.
@@ -424,6 +422,44 @@ the xpath on the right one.
 **Not measured in place.** Same blocker as fixes 3, 6 and 7 - the logo was verified standalone, not
 on a rendered `/shop/payment`.
 
+## Fix 9 - the injected plan switch is gone (2026-08-18)
+
+`makeAlmaPlanSwitch()` ([alma_widget.js:735]) builds
+
+```html
+<div class="o-mconfort-alma-plan-switch" role="tablist" aria-label="Choix des mensualites Alma">
+  <button class="o-mconfort-alma-plan-switch__btn is-active" data-plan="1">1x</button>
+  ...
+</div>
+```
+
+and `consolidateAlmaCheckoutOptions()` calls it on **every** run (line 926, 90 ms debounce), after
+`normalizeAlmaOptionLabels` and `syncAlmaDescriptionVisibility`. Each click sets
+`form.dataset.mconfortAlmaTargetOptionId` / `...TargetPlan`, clicks the hidden row's radio and
+re-consolidates.
+
+`.o-mconfort-alma-plan-switch { display: none; }` scoped to
+`.o_payment_form li[name='o_payment_option'].o-mconfort-alma-option`. No `!important` - the parent
+writes no inline `display` on the switch and styles the class nowhere; the compact button styling
+that used to live in this file (fix 3) was the only rule for it and is now replaced by this one.
+The node is still built on every consolidation, which costs nothing.
+
+**Removing it strands no plan.** `o-mconfort-alma-group-hidden` - the class the parent puts on the
+non-current 1x-4x rows - is styled **nowhere**: not in the parent's SCSS, not anywhere in
+`web.assets_frontend.min.css`, and there is no `[aria-hidden]` rule in the bundle either. The
+"hidden" rows are only marked, never actually hidden, so 2x/3x/4x stay in the list and stay
+clickable. Verify that before assuming the switch is the only way in:
+
+```js
+[...document.querySelectorAll('.o-mconfort-alma-group-hidden')]
+    .map(li => [li.querySelector('.o_payment_option_label')?.textContent.trim(),
+                getComputedStyle(li).display, li.getBoundingClientRect().height])
+```
+
+Verified after the upgrade: the rule is in the bundle, and a stub
+`.o_payment_form li.o-mconfort-alma-option > .o-mconfort-alma-plan-switch` computes `display: none`
+in the browser. The rendered checkout is still **blind** - same address blocker as fixes 3 and 6-8.
+
 ## Source files carry no comments (2026-08-18)
 
 Stripped at the user's request, including the `# -*- coding: utf-8 -*-` line in the manifest (Python 3
@@ -458,6 +494,7 @@ ships. Do not re-propose it unless asked.
 | 5d | Rule **applied** (`margin-bottom` computes to `8px` on `/shop/address`); the checkout page itself is **not** rendered - address required. |
 | 6 | **Blind**, like fix 3. Bundle contains the code; no rendered `/shop/payment` was ever inspected. |
 | 7 | **Blind**, like fix 3. Combined arch verified through the ORM; no rendered `/shop/payment` was ever inspected. |
+| 9 | Rule **verified** in the bundle and on a stub node (`display: none`); no rendered `/shop/payment`. `group-hidden` confirmed unstyled, so no plan is stranded. |
 | 8 | Logo **measured** standalone in the browser (75x26 box, glyphs 11.80-23.20 centred on 17.5, baseline y=17); the row it sits in is still **blind**. |
 | 5 | Re-verified after the comment strip: qty 5→6 moved the total to 1 170,00 € and the recap to `12 x 97,50 €`, no stray `body > .product_price`. |
 
