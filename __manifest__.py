@@ -11,6 +11,7 @@
     "data": [
         "views/checkout_1x_badge.xml",
         "views/checkout_1x_logo.xml",
+        "views/checkout_credit_badge.xml",
     ],
     "assets": {
         "web.assets_frontend": [

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="mconfort_alma_credit_badge"
+              inherit_id="mconfort_alma_widgets.mconfort_alma_checkout_badges">
+        <xpath expr="//div[contains(@class, 'mc-alma-badge--credit')]" position="replace">
+            <div class="mc-alma-badge mc-alma-badge--credit w-100 ms-4 mt-1 mb-0">
+                Paiement à credit • Frais inclus
+            </div>
+        </xpath>
+    </template>
+
+</odoo>
