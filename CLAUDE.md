@@ -1,7 +1,7 @@
 # mconfort_alma_fixes
 
 Odoo 19 module. Corrections to the Alma widget shipped by `mconfort_alma_widgets`.
-Assets only — no models, no views, no data.
+Assets, plus one inherited view since fix 7 — still no models and no data.
 
 Depends on `mconfort_alma_widgets`, so its bundle entries load **after** the parent's and win at
 equal specificity. Nothing here uses `!important` except where it must beat an inline `style`
@@ -10,7 +10,9 @@ attribute written by the parent's JS.
 | File | Fixes |
 |---|---|
 | `static/src/scss/alma_fixes.scss` | 1 (mobile overflow, product page), 3 (checkout card height), 4 (modal height on mobile), 5b + 5c + 5d (the cart card) |
-| `static/src/js/alma_qty.js` | 2 (amount follows the qty box), 5 (cart amount follows the cart qty) |
+| `static/src/js/alma_qty.js` | 2 (amount follows the qty box), 5 (cart amount follows the cart qty), 6 (the 1x label at checkout) |
+| `views/checkout_1x_badge.xml` | 7 (the missing 1x badge at checkout) |
+| `views/checkout_1x_logo.xml` + `static/src/img/p1x_logo.svg` | 8 (the 1x logo had no plan chip) |
 
 Read the fixes in order. **5b is superseded by 5c** — it is kept because it records what the parent
 does and why, not because its rules still stand.
@@ -128,8 +130,9 @@ disclosure. Do not widen the selector to all `.o-mconfort-alma-option` without c
 If exact height parity is wanted, hide `.o-mconfort-alma-plan-switch` too and move the plan choice
 into the label.
 
-Note `alma_1x` gets **no** badge — `mconfort_alma_checkout_badges` matches
-`installments_count >= 2` (free) or `>= 5` (credit); 1 falls through both.
+Note `alma_1x` used to get **no** badge — `mconfort_alma_checkout_badges` matches
+`installments_count >= 2` (free) or `>= 5` (credit), so 1 fell through both. Fix 7 adds the branch.
+That id is a **template** inside `mconfort_alma_widgets/views/checkout_alma_design.xml`, not a module.
 
 ## Fix 4 — the 10x/12x modal ate the whole mobile viewport
 
@@ -303,6 +306,124 @@ card *is* last: 8px of extra space inside the card body.
 declined (same blocker as fix 3). Verified only that the rule applies: on `/shop/address`, which
 mounts the same widget, `margin-bottom` computes to `8px` after the upgrade.
 
+## Fix 6 - alma_1x was labelled "Paiement en plusieurs fois avec Alma" (2026-08-18)
+
+The parent hardcodes it. `normalizeAlmaOptionLabels(grouped, selectedOption)` in
+`alma_widget.js` stores the row's original text in `data-mconfort-original-label`, then writes
+**one fixed string** on whichever grouped option is current:
+
+```js
+label.textContent = "Paiement en plusieurs fois avec Alma";
+```
+
+The string is meant as a *group header* - the grouped row carries the `1x 2x 3x 4x` switch, so it
+names the group, not the active plan. But `consolidateAlmaCheckoutOptions` picks `grouped[0]` when
+nothing is checked, and `buildAlmaGroup` sorts ascending, so the default current option is
+**alma_1x** - a single payment presenting itself as installments.
+
+Fix: keep the parent's string for 2x/3x/4x, swap it for `Paiement en 1 fois avec Alma` when the
+current option's plan count is 1. `syncAlmaGroupLabel()` reads
+`data-mconfort-alma-plan-count` (set by `buildAlmaGroup`) on
+`li.o-mconfort-alma-option.o-mconfort-alma-group-current`.
+
+Why an observer rather than a patch: `alma_widget.js` exports nothing, and the parent rewrites the
+label on **every** consolidation (`scheduleCheckoutConsolidation`, 90 ms debounce, fired on radio
+change and plan-switch clicks). A one-shot write would be overwritten on the next click.
+`watchAlmaGroupLabel()` observes each `.o_payment_form` with
+`{childList, characterData, subtree, attributes: ["class"]}` - the class filter is what catches the
+`o-mconfort-alma-group-current` toggle when the plan switches.
+
+### Traps
+
+- **Do not write when the text already matches.** The observer watches `characterData`, so our own
+  write re-enters it; the `!==` guard is what terminates it. Same pattern as fix 2.
+- **Only touch `o-mconfort-alma-group-current`.** That class only exists *after* the parent has run,
+  so `data-mconfort-original-label` is already recorded by then - writing earlier would let the
+  parent save our text as the "original" and restore it onto the hidden rows.
+- **No count, no write.** If `data-mconfort-alma-plan-count` is absent (fewer than 2 grouped
+  options, so the parent bails before `buildAlmaGroup` tags anything) the row keeps its own label.
+
+**Not measured.** `/shop/payment` redirects to `/shop/address` without a delivery address, and
+filling one was declined - same blocker as fix 3. Verified only that the code ships:
+`web.assets_frontend_lazy.min.js` (`f08a2cd`) contains `syncAlmaGroupLabel` and the new string.
+
+## Fix 7 - the 1x row had no badge (2026-08-18)
+
+Same root as fix 6, one layer down. `mconfort_alma_widgets` (template
+`mconfort_alma_checkout_badges` in `views/checkout_alma_design.xml`, inheriting
+`dt_payment_alma.payment_alma_method_form` at priority 20) **replaces** the
+`pm_sudo.description` block with a badge:
+
+| `installments_count` | badge |
+|---|---|
+| 2-4 | `.mc-alma-badge--free` - `Frais de paiement offerts` |
+| >= 5 | `.mc-alma-badge--credit` - `Frais inclus dans les mensualites` |
+| 1 | nothing - the replace still runs, so `alma_1x` lost its description *and* got no badge |
+
+So the 1x row rendered one line shorter than 2x/3x/4x, and since the plan switch swaps which row is
+current, the card jumped every time you moved off 1x.
+
+`views/checkout_1x_badge.xml` inherits the same `dt_payment_alma.payment_alma_method_form` at
+**priority 30** - after the parent's 20, so the parent's badges are already in the arch - and adds
+the `installments_count == 1` branch with the **identical** free-badge markup.
+
+- XPath is `//div[contains(@class, 'mc-alma-badge--credit')]/..` + `position="after"`, i.e. anchored
+  on the credit branch, so the new node lands inside the outer `<t t-if="provider_sudo.code ==
+  'alma'">` and inherits the provider guard for free. Anchoring on the outer `t` instead would need
+  a `t-if` string carrying both quote styles.
+- It is a standalone `t-if`, **not** a `t-elif` on the parent's chain: `== 1` cannot also be `>= 2`,
+  and an independent condition does not break if the parent reorders its branches.
+- The module now ships `data` - it was assets-only before.
+
+Combined arch after the upgrade (`payment.method_form._get_combined_arch()`): 2 free badges, 1
+credit badge, ours sitting right after the credit branch.
+
+Values confirmed in DB: `alma_1x` has `installments_count = 1`, and 1x/2x/3x/4x all share the same
+`description` (`Paiement rapide et securise par carte de credit`), which the parent's replace drops
+for every Alma method.
+
+Badge text is the parent's, verbatim, so the two rows are pixel-identical. `alma_1x` charges no fee
+either, so it is not a false claim - but it is a marketing string, easy to change in one place.
+
+**Not measured.** Same blocker as fixes 3 and 6: `/shop/payment` needs a delivery address.
+
+## Fix 8 - the 1x logo carried no plan chip (2026-08-18)
+
+`mconfort_alma_form_logo` (in the parent's `checkout_alma_design.xml`, inheriting
+`payment.form_logo` at priority 99) swaps the DB image for
+`/dt_payment_alma/static/src/img/p%sx_logo.svg % installments_count`. Every one of those files is
+**75x26**: a white rounded card, a black `rect(3, 3, 29, 20)` chip holding the plan in white
+glyphs, then the orange alma wordmark at x=66.
+
+`p1x_logo.svg` is the exception - **41x26**, no chip, wordmark only. So the 1x row showed a bare
+alma logo while 2x/3x/4x/10x/12x showed `2x alma`, `3x alma`, and so on.
+
+The glyphs are paths, not `<text>`, so there is nothing to relabel. `static/src/img/p1x_logo.svg`
+is assembled from the existing files instead:
+
+- the `1` is the **first** subpath of `p10x_logo.svg`'s white path;
+- the `x` is the **second** subpath of `p2x_logo.svg`'s white path (its first is the `2`);
+- everything else - both rects, the orange wordmark path - is copied from `p2x_logo.svg` verbatim.
+
+Placement was measured with `getBBox()` in the browser, not guessed. The gap is p2x's own
+(`x.x - (two.x + two.width)` = 0.999), so the pair sits at the same rhythm as `2x`; the total
+11.403 is centred on the chip centre 17.5, giving `translate(4.346 0)` on the `1` and
+`translate(-0.618 0)` on the `x`. No vertical shift - both glyphs already sit on the y=17 baseline,
+same as `p2x_logo.svg`.
+
+Verified in the browser after the upgrade: the file serves 200, the rendered box is **75x26** like
+`p2x_logo.svg`, glyphs span **11.80 - 23.20** (centre exactly 17.5) with both baselines at y=17.
+
+`views/checkout_1x_logo.xml` inherits `payment.form_logo` at **priority 100** - after the parent's
+99, so the `<img class="mc-alma-pm-logo">` already exists - and rewrites its `t-att-src` to point at
+our file when `installments_count == 1`. `position="attributes"` on
+`//img[@class='mc-alma-pm-logo' and @t-att-src]`: the second `mc-alma-pm-logo` img in that template
+(the generic `code == 'alma'` branch) has a plain `src`, so the `@t-att-src` predicate is what keeps
+the xpath on the right one.
+
+**Not measured in place.** Same blocker as fixes 3, 6 and 7 - the logo was verified standalone, not
+on a rendered `/shop/payment`.
+
 ## Source files carry no comments (2026-08-18)
 
 Stripped at the user's request, including the `# -*- coding: utf-8 -*-` line in the manifest (Python 3
@@ -335,6 +456,9 @@ ships. Do not re-propose it unless asked.
 | 5b | **Measured** at 375x812 (logo and recap both at `x=28`; border-top and margin now match the product card) and 1280x800 (pill unchanged, border-top normalised). |
 | 5c | **Measured** at 992, 1920 and 375, on **all five plans** (2x/3x/4x/10x/12x). No clipping, nothing past the padding box, card fills the summary column. |
 | 5d | Rule **applied** (`margin-bottom` computes to `8px` on `/shop/address`); the checkout page itself is **not** rendered - address required. |
+| 6 | **Blind**, like fix 3. Bundle contains the code; no rendered `/shop/payment` was ever inspected. |
+| 7 | **Blind**, like fix 3. Combined arch verified through the ORM; no rendered `/shop/payment` was ever inspected. |
+| 8 | Logo **measured** standalone in the browser (75x26 box, glyphs 11.80-23.20 centred on 17.5, baseline y=17); the row it sits in is still **blind**. |
 | 5 | Re-verified after the comment strip: qty 5→6 moved the total to 1 170,00 € and the recap to `12 x 97,50 €`, no stray `body > .product_price`. |
 
 `/mconfort/alma/widget/schedule` answers from this box now, credit plans included, so fix 4 is no

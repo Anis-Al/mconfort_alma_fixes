@@ -5,6 +5,7 @@ const QTY_SELECTOR = "input[name='add_qty']";
 const TOTAL_CLASS = "mc-alma-qty-total";
 const SKIP_SELECTOR = `del, .tp-compare-price, .text-muted, .tp-old-price, .${TOTAL_CLASS}`;
 const CART_TOTAL_SELECTOR = ".o_cart_total";
+const ALMA_GROUP_SELECTOR = "li[name='o_payment_option'].o-mconfort-alma-option.o-mconfort-alma-group-current";
 
 function parseAmount(rawText) {
     const cleaned = String(rawText || "").replace(/\s/g, "").replace(/[^0-9,.-]/g, "");
@@ -144,8 +145,41 @@ function watchCartTotal() {
     observer.observe(totalNode, { childList: true, characterData: true, subtree: true });
 }
 
+function syncAlmaGroupLabel() {
+    document.querySelectorAll(ALMA_GROUP_SELECTOR).forEach((option) => {
+        const label = option.querySelector(".o_payment_option_label");
+        const count = Number(option.dataset.mconfortAlmaPlanCount || 0);
+        if (!label || !count) {
+            return;
+        }
+        const text = count === 1
+            ? "Paiement en 1 fois avec Alma"
+            : "Paiement en plusieurs fois avec Alma";
+        if (label.textContent !== text) {
+            label.textContent = text;
+        }
+    });
+}
+
+function watchAlmaGroupLabel() {
+    const forms = document.querySelectorAll(".o_payment_form");
+    if (!forms.length) {
+        return;
+    }
+    const observer = new MutationObserver(() => syncAlmaGroupLabel());
+    forms.forEach((form) => observer.observe(form, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class"],
+    }));
+    syncAlmaGroupLabel();
+}
+
 function start() {
     watchCartTotal();
+    watchAlmaGroupLabel();
 
     if (!document.querySelector(PRICE_SELECTOR)) {
         return;

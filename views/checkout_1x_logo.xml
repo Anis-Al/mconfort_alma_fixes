@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="mconfort_alma_1x_logo"
+              inherit_id="payment.form_logo"
+              priority="100">
+        <xpath expr="//img[@class='mc-alma-pm-logo' and @t-att-src]" position="attributes">
+            <attribute name="t-att-src">
+                '/mconfort_alma_fixes/static/src/img/p1x_logo.svg'
+                if logo_pm_sudo.installments_count == 1
+                else '/dt_payment_alma/static/src/img/p%sx_logo.svg' % logo_pm_sudo.installments_count
+            </attribute>
+        </xpath>
+    </template>
+
+</odoo>

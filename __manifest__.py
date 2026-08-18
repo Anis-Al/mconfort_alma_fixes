@@ -8,6 +8,10 @@
     "depends": [
         "mconfort_alma_widgets",
     ],
+    "data": [
+        "views/checkout_1x_badge.xml",
+        "views/checkout_1x_logo.xml",
+    ],
     "assets": {
         "web.assets_frontend": [
             "mconfort_alma_fixes/static/src/scss/alma_fixes.scss",

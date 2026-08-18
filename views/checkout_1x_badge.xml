@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="mconfort_alma_1x_badge"
+              inherit_id="dt_payment_alma.payment_alma_method_form"
+              priority="30">
+        <xpath expr="//div[contains(@class, 'mc-alma-badge--credit')]/.." position="after">
+            <t t-if="pm_sudo.installments_count == 1">
+                <div class="mc-alma-badge mc-alma-badge--free w-100 ms-4 mt-1 mb-0">
+                    <span aria-hidden="true">&#127873;</span>
+                    Frais de paiement offerts
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>
