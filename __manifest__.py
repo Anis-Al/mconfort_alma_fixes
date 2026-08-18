@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "mconfort Alma Widgets - Fixes",
-    "summary": "Overflow mobile fiche produit, montant Alma suivant la quantite, cartes checkout uniformes",
+    "summary": "Overflow mobile fiche produit et panier, montant Alma suivant la quantite (fiche et panier), cartes checkout uniformes",
     "category": "Website/eCommerce",
     "author": "Anis Alim",
     "license": "LGPL-3",

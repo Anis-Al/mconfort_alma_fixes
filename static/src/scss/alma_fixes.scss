@@ -38,6 +38,14 @@
         border-radius: var(--mc-radius);
     }
 
+    /* Panier : le parent centre le contenu (justify-content:center). Une fois
+       la carte passee sur deux lignes, le logo et les pastilles restent
+       centres alors que la ligne recap, pleine largeur, reste calee a gauche.
+       On aligne tout a gauche comme sur la fiche produit. */
+    .o-alma-cart-widget {
+        justify-content: flex-start;
+    }
+
     #product_details .o-alma-widget .o-alma-widget__options,
     .tp-product-right-panel .o-alma-widget .o-alma-widget__options,
     .o-alma-cart-widget .o-alma-widget__options {

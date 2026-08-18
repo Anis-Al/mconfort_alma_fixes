@@ -133,7 +133,61 @@ function watchPriceNodes() {
     });
 }
 
+/*
+ * Cart page. The parent mounts its cart widget from `.o_cart_total` and knows
+ * how to refresh it (`mountCartAlmaWidget` rewrites its fake source node when
+ * the total moved) - but nothing calls `mountWidgets` again when a cart line
+ * qty changes, so the widget keeps the amount it was born with.
+ *
+ * The parent's body observer runs `scheduleMountWidgets` for any *added* node
+ * matching `.product_price`. So we add one and remove it in the same tick: the
+ * observer still sees it in `addedNodes`, `getMountScope` falls back to
+ * `document` (the node is already detached), and `findPriceNodes` cannot pick
+ * it up - it only looks under `#product_details` / product grids. One throwaway
+ * node, no access to the parent's module-private functions.
+ */
+
+const CART_TOTAL_SELECTOR = ".o_cart_total";
+
+// Same two-step lookup as the parent, and for the same reason: a single
+// comma-separated selector returns the first node in *document order*, which
+// in this block is the delivery/tax row, not the order total.
+function readCartAmount(totalNode) {
+    const node = totalNode.querySelector("tr[name='o_order_total'] .oe_currency_value")
+        || totalNode.querySelector(".oe_currency_value");
+    return node ? parseAmount(node.textContent) : 0;
+}
+
+function pokeParentMount() {
+    const decoy = document.createElement("span");
+    decoy.className = "product_price";
+    document.body.appendChild(decoy);
+    decoy.remove();
+}
+
+function watchCartTotal() {
+    // `.o_cart_total` itself survives a qty update; only its rows are replaced.
+    const totalNode = document.querySelector(CART_TOTAL_SELECTOR);
+    if (!totalNode) {
+        return;
+    }
+    let lastAmount = readCartAmount(totalNode);
+
+    // Re-rendering the widget mutates the DOM *after* `.o_cart_total`, never
+    // inside it, and the amount guard makes a stray notification a no-op.
+    const observer = new MutationObserver(() => {
+        const amount = readCartAmount(totalNode);
+        if (amount > 0 && amount !== lastAmount) {
+            lastAmount = amount;
+            pokeParentMount();
+        }
+    });
+    observer.observe(totalNode, { childList: true, characterData: true, subtree: true });
+}
+
 function start() {
+    watchCartTotal();
+
     if (!document.querySelector(PRICE_SELECTOR)) {
         return;
     }
