@@ -1,14 +1,3 @@
-/* ============================================================
-   mconfort Alma Widgets - correctifs
-   Charge apres mconfort_alma_widgets (dependance du module).
-   ============================================================ */
-
-/* ------------------------------------------------------------
-   1. Porteur du montant "prix unitaire x quantite" (alma_qty.js)
-   Doit rester "visible" au sens de getComputedStyle : le widget
-   parent ignore display:none / visibility:hidden / .d-none.
-   ------------------------------------------------------------ */
-
 .mc-alma-qty-total {
     position: absolute;
     width: 0;
@@ -18,26 +7,18 @@
     pointer-events: none;
 }
 
-/* ------------------------------------------------------------
-   1b. Panier : le parent trace un filet separateur en haut du
-   widget (border-top: 1px solid #e8e8e8, herite de l'epoque ou
-   le widget n'etait qu'une ligne sous le total). Depuis que la
-   carte porte une bordure complete, ce filet donne un bord
-   superieur d'une autre teinte que les trois autres cotes.
-   On reprend la couleur et la marge de la fiche produit.
-   ------------------------------------------------------------ */
-
 .o-alma-cart-widget {
-    border-top-color: var(--mc-border);
+    flex-wrap: wrap;
+    row-gap: 4px;
     margin-top: 8px;
+    border-top-color: var(--mc-border);
 }
 
-/* ------------------------------------------------------------
-   2. Fiche produit + panier : le widget deborde en mobile.
-   La ligne recap ("12 x 16,25 EUR") est tronquee car le widget
-   est en flex-wrap:nowrap avec max-width:max-content. On la
-   passe sur une deuxieme ligne pleine largeur.
-   ------------------------------------------------------------ */
+.o-alma-cart-widget .o-alma-widget__payment-info {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
 
 @media (max-width: 767.98px) {
 
@@ -52,10 +33,6 @@
         border-radius: var(--mc-radius);
     }
 
-    /* Panier : le parent centre le contenu (justify-content:center). Une fois
-       la carte passee sur deux lignes, le logo et les pastilles restent
-       centres alors que la ligne recap, pleine largeur, reste calee a gauche.
-       On aligne tout a gauche comme sur la fiche produit. */
     .o-alma-cart-widget {
         justify-content: flex-start;
     }
@@ -79,7 +56,6 @@
         line-height: 1.35;
     }
 
-    /* Deux lignes desormais : la hauteur reservee au chargement suit. */
     #product_details .o-alma-widget.is-loading,
     .tp-product-right-panel .o-alma-widget.is-loading,
     .o-alma-cart-widget.is-loading {
@@ -97,18 +73,6 @@
         font-size: 11px;
     }
 }
-
-/* ------------------------------------------------------------
-   3. Checkout : la carte Alma groupee (1x/2x/3x/4x, alma_1x
-   selectionne par defaut) portait en plus l'echeancier deplie,
-   ce qui la rendait bien plus haute que les autres methodes.
-   Le badge "Frais de paiement offerts" et le selecteur de plan
-   suffisent a ce niveau ; le detail reste visible sur 10x/12x,
-   ou il porte l'information de credit.
-   ponytail: si la parite exacte est voulue, masquer aussi
-   .o-mconfort-alma-plan-switch et remettre le choix du plan
-   dans le libelle.
-   ------------------------------------------------------------ */
 
 .o_payment_form li[name="o_payment_option"].o-mconfort-alma-option.o-mconfort-alma-group-current
     [name="alma_description"] {
@@ -141,19 +105,6 @@
     color: #ffffff;
 }
 
-/* ------------------------------------------------------------
-   4. Modale : 10x / 12x remplissent l'ecran en mobile.
-   L'echeancier a une ligne par versement, donc 12 lignes de 33px
-   plus le titre, les 3 etapes, le logo, le selecteur et le total.
-   A partir de la 6e ligne, l'echeancier defile a l'interieur
-   (max-height) au lieu d'allonger la modale : le total et les
-   frais restent visibles sans scroller toute la modale.
-   Le nombre de lignes n'est expose nulle part en classe CSS,
-   d'ou :has() ; sans support :has le comportement actuel
-   (modale entiere scrollable) subsiste.
-   ponytail: pas de JS, pas de compteur de lignes en dataset.
-   ------------------------------------------------------------ */
-
 @media (max-width: 767.98px) {
 
     .o-alma-modal__schedule:has(> .o-alma-modal__schedule-row:nth-child(6)) {
@@ -162,14 +113,12 @@
         overscroll-behavior: contain;
     }
 
-    /* Lignes plus serrees quand la liste est longue. */
     .o-alma-modal__schedule:has(> .o-alma-modal__schedule-row:nth-child(6))
         .o-alma-modal__schedule-row {
         padding: 6px 0;
         font-size: 12.5px;
     }
 
-    /* Et le reste du contenu se resserre dans le meme cas. */
     .o-alma-modal__dialog:has(.o-alma-modal__schedule-row:nth-child(6)) {
         .o-alma-modal__title { margin-bottom: 12px; }
         .o-alma-modal__steps { margin-top: 12px; gap: 7px; }

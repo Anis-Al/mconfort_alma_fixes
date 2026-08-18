@@ -122,7 +122,7 @@ Fix hides the schedule on the grouped card only, and gives the plan switch expli
 disclosure. Do not widen the selector to all `.o-mconfort-alma-option` without checking that.
 
 If exact height parity is wanted, hide `.o-mconfort-alma-plan-switch` too and move the plan choice
-into the label. Marked `ponytail:` in the SCSS.
+into the label.
 
 Note `alma_1x` gets **no** badge — `mconfort_alma_checkout_badges` matches
 `installments_count >= 2` (free) or `>= 5` (credit); 1 falls through both.
@@ -225,6 +225,49 @@ After: every listed prop matches the product-page card at 375px and at 1280x800.
 height gap (cart 58px vs product 70px) is content, not styling — the product page had `12x` active,
 which adds the "Frais de credit inclus" second line.
 
+## Fix 5c — the cart recap was clipped on desktop too
+
+Not a viewport problem. `.o_total_card` is a fixed sidebar column: **368px at 992, 408px at 1920**.
+It never gets wider. So the widget's content box is ~296–360px and has to hold logo (35) + gap (10)
++ five plan pills (169) + gap (10) + the recap. With `12x` active the recap carries the credit note
+(`Frais de credit inclus — voir details`, `display:block` inside the info) and measures **154px**.
+`.o-alma-widget__payment-info` is `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`,
+so the text is silently cut. Measured before the fix, `scrollWidth` vs `clientWidth`:
+
+| viewport | column | info scroll/client | clipped |
+|---|---|---|---|
+| 992 | 368 | 154 / 95 | yes |
+| 1100 | 368 | 154 / 95 | yes |
+| 1920 | 408 | 154 / 135 | yes |
+| 1280, `4x` active | 443 | 70 / 70 | no |
+
+Two unconditional rules on `.o-alma-cart-widget` — no media query, because the trigger is the column
+width and the active plan, not the screen:
+
+- `flex-wrap: wrap` + `row-gap: 4px` — the recap drops to its own line **only when it does not fit**;
+- `white-space: normal; overflow: visible; text-overflow: clip` on the recap, so once it is on its
+  own line it wraps instead of being cut.
+
+The pill radius is left alone outside the mobile breakpoint: the product-page card is already a
+999px pill 45px tall with a two-line recap at `12x`, so a taller pill is the house look.
+
+After, measured:
+
+| viewport | plan | card | recap | clipped |
+|---|---|---|---|---|
+| 1920 | 4x | 38px, one line | 70px, same row | no |
+| 1920 | 12x | 73px, wrapped | 154px, own line | no |
+| 992 | 12x | 73px, wrapped | 154px, own line | no |
+| 375 | 4x | 62px | full width | no |
+| 375 | 12x | 74px | full width | no |
+
+## Source files carry no comments (2026-08-18)
+
+Stripped at the user's request. `/** @odoo-module **/` stays — it is a loader directive, not a
+comment. **This file is now the only record of why any of it is written that way**; the `ponytail:`
+markers that used to sit in the SCSS and the JS are gone. Update the relevant fix section here when
+you touch the code.
+
 ## Rejected — product-page card redesign (2026-08-17, 16:0x)
 
 A full restyle of the product-page card (white card, `1px #e6e6e6`, wordmark **Alma** via
@@ -248,6 +291,8 @@ ships. Do not re-propose it unless asked.
 | 2 | Now **measured** on the product page: 195,00 € at qty 2 gives `.mc-alma-qty-total` = `390.00` and the recap `12 x 32,50 €`. |
 | 5 | **Measured** on `/shop/cart` at 375x812 and 1280x800: qty 4→5→6 moved the total 780 → 975 → 1 170 and the recap followed (`4 x 195,00` → `4 x 243,75` → `4 x 292,50`); the minus button back to 5 followed too. No stray `body > .product_price`. The modal read `Total 975,00 €`. |
 | 5b | **Measured** at 375x812 (logo and recap both at `x=28`; border-top and margin now match the product card) and 1280x800 (pill unchanged, border-top normalised). |
+| 5c | **Measured** at 992, 1100, 1280, 1920 and 375, on both `4x` (short recap) and `12x` (credit note). Clipping gone everywhere; the card still collapses to one line when the recap fits. |
+| 5 | Re-verified after the comment strip: qty 5→6 moved the total to 1 170,00 € and the recap to `12 x 97,50 €`, no stray `body > .product_price`. |
 
 Also observed on 2026-08-18: `/mconfort/alma/widget/schedule` **did** answer — the 2x modal
 rendered a real two-line schedule with `Total 975,00 €` / `Dont frais 0,00 €`. The "endpoint
