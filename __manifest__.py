@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 {
     "name": "mconfort Alma Widgets - Fixes",
     "summary": "Overflow mobile fiche produit et panier, montant Alma suivant la quantite (fiche et panier), cartes checkout uniformes",

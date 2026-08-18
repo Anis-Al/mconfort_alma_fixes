@@ -241,30 +241,39 @@ so the text is silently cut. Measured before the fix, `scrollWidth` vs `clientWi
 | 1920 | 408 | 154 / 135 | yes |
 | 1280, `4x` active | 443 | 70 / 70 | no |
 
-Two unconditional rules on `.o-alma-cart-widget` — no media query, because the trigger is the column
-width and the active plan, not the screen:
+A second, worse problem showed up once the clipping was gone: on desktop the card kept the parent's
+`padding: 8px 0 4px` — **no horizontal padding at all** — while carrying a full border and a 999px
+pill radius. The logo sat 1px from the border (`x=609` against a card at `x=608`) and the rounded
+ends cut into the content. That, not the ellipsis, is what reads as "slight overflow" on every plan
+including 2x/3x/4x.
 
+`.o-alma-cart-widget` therefore gets one unconditional block — no media query, because the trigger is
+the sidebar column width and the active plan, not the viewport:
+
+- `width: 100%; max-width: 100%` — the card fills the summary column instead of shrinking to
+  `max-content`, which is what gives the recap room in the first place;
+- `padding: 8px 12px` and `border-radius: var(--mc-radius)` — a full-width box is not a pill, and it
+  needs real horizontal padding inside its border;
+- `justify-content: flex-start` — the parent centres, which looked broken the moment the card wrapped;
 - `flex-wrap: wrap` + `row-gap: 4px` — the recap drops to its own line **only when it does not fit**;
-- `white-space: normal; overflow: visible; text-overflow: clip` on the recap, so once it is on its
-  own line it wraps instead of being cut.
+- `white-space: normal; overflow: visible; text-overflow: clip` on the recap, so once it is on its own
+  line it wraps instead of being cut.
 
-The pill radius is left alone outside the mobile breakpoint: the product-page card is already a
-999px pill 45px tall with a two-line recap at `12x`, so a taller pill is the house look.
+The mobile block no longer repeats these for the cart — it now covers the product page only.
 
-After, measured:
+After, measured on all five plans at three widths. `infoPast` / `optsPast` are the gap between a
+child's right edge and the card's padding box; negative means inside.
 
-| viewport | plan | card | recap | clipped |
-|---|---|---|---|---|
-| 1920 | 4x | 38px, one line | 70px, same row | no |
-| 1920 | 12x | 73px, wrapped | 154px, own line | no |
-| 992 | 12x | 73px, wrapped | 154px, own line | no |
-| 375 | 4x | 62px | full width | no |
-| 375 | 12x | 74px | full width | no |
+| viewport | card | 2x/3x/4x | 10x/12x | clipped | past padding box |
+|---|---|---|---|---|---|
+| 1920 | 360px, fills column | 64px | 78px | none | none |
+| 992 | 320px, fills column | 64px | 78px | none | none |
+| 375 | 345px | 62px | 74px | none | none |
 
 ## Source files carry no comments (2026-08-18)
 
-Stripped at the user's request. `/** @odoo-module **/` stays — it is a loader directive, not a
-comment. **This file is now the only record of why any of it is written that way**; the `ponytail:`
+Stripped at the user's request, including the `# -*- coding: utf-8 -*-` line in the manifest (Python 3
+is UTF-8 by default). `/** @odoo-module **/` stays — it is a loader directive, not a comment. **This file is now the only record of why any of it is written that way**; the `ponytail:`
 markers that used to sit in the SCSS and the JS are gone. Update the relevant fix section here when
 you touch the code.
 
@@ -291,7 +300,7 @@ ships. Do not re-propose it unless asked.
 | 2 | Now **measured** on the product page: 195,00 € at qty 2 gives `.mc-alma-qty-total` = `390.00` and the recap `12 x 32,50 €`. |
 | 5 | **Measured** on `/shop/cart` at 375x812 and 1280x800: qty 4→5→6 moved the total 780 → 975 → 1 170 and the recap followed (`4 x 195,00` → `4 x 243,75` → `4 x 292,50`); the minus button back to 5 followed too. No stray `body > .product_price`. The modal read `Total 975,00 €`. |
 | 5b | **Measured** at 375x812 (logo and recap both at `x=28`; border-top and margin now match the product card) and 1280x800 (pill unchanged, border-top normalised). |
-| 5c | **Measured** at 992, 1100, 1280, 1920 and 375, on both `4x` (short recap) and `12x` (credit note). Clipping gone everywhere; the card still collapses to one line when the recap fits. |
+| 5c | **Measured** at 992, 1920 and 375, on **all five plans** (2x/3x/4x/10x/12x). No clipping, nothing past the padding box, card fills the summary column. |
 | 5 | Re-verified after the comment strip: qty 5→6 moved the total to 1 170,00 € and the recap to `12 x 97,50 €`, no stray `body > .product_price`. |
 
 Also observed on 2026-08-18: `/mconfort/alma/widget/schedule` **did** answer — the 2x modal

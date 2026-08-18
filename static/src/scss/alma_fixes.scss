@@ -10,8 +10,13 @@
 .o-alma-cart-widget {
     flex-wrap: wrap;
     row-gap: 4px;
+    width: 100%;
+    max-width: 100%;
     margin-top: 8px;
+    padding: 8px 12px;
+    justify-content: flex-start;
     border-top-color: var(--mc-border);
+    border-radius: var(--mc-radius);
 }
 
 .o-alma-cart-widget .o-alma-widget__payment-info {
@@ -23,18 +28,13 @@
 @media (max-width: 767.98px) {
 
     #product_details .o-alma-widget,
-    .tp-product-right-panel .o-alma-widget,
-    .o-alma-cart-widget {
+    .tp-product-right-panel .o-alma-widget {
         flex-wrap: wrap;
         width: 100%;
         max-width: 100%;
         row-gap: 4px;
         padding: 8px 12px;
         border-radius: var(--mc-radius);
-    }
-
-    .o-alma-cart-widget {
-        justify-content: flex-start;
     }
 
     #product_details .o-alma-widget .o-alma-widget__options,
