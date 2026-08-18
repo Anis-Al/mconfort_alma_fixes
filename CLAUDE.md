@@ -9,7 +9,7 @@ attribute written by the parent's JS.
 
 | File | Fixes |
 |---|---|
-| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow, product page), 3 (checkout card height), 4 (modal height on mobile), 5b + 5c (the cart card) |
+| `static/src/scss/alma_fixes.scss` | 1 (mobile overflow, product page), 3 (checkout card height), 4 (modal height on mobile), 5b + 5c + 5d (the cart card) |
 | `static/src/js/alma_qty.js` | 2 (amount follows the qty box), 5 (cart amount follows the cart qty) |
 
 Read the fixes in order. **5b is superseded by 5c** — it is kept because it records what the parent
@@ -286,6 +286,23 @@ child's right edge and the card's padding box; negative means inside.
 | 992 | 320px, fills column | 64px | 78px | none | none |
 | 375 | 345px | 62px | 74px | none | none |
 
+## Fix 5d - the card touched the confirm button on checkout (2026-08-18)
+
+`mountCartAlmaWidget()` inserts the widget with `insertAdjacentElement('afterend', ...)` on
+`.o_cart_total`, so on **checkout** (`website_sale.shorter_cart_summary` -> `.o_cart_total` then
+`t-call="website_sale.navigation_buttons"` inside the same `card-body`) the card lands directly
+above the confirm button with nothing between them. The parent gives the widget `margin-top` only.
+
+`margin-bottom: 8px` on `.o-alma-cart-widget`, mirroring the `margin-top: 8px` fix 5b already set.
+Unconditional, not `:not(:last-child)`: the theme overrides the summary template (on `/shop/address`
+the widget is the last child of a `.d-none.d-lg-block` wrapper inside `.o_total_card`, not of the
+card body), so a last-child guard is not reliably true on checkout. Cost on `/shop/cart`, where the
+card *is* last: 8px of extra space inside the card body.
+
+**Not measured on `/shop/checkout`** - reaching it needs a delivery address, and filling one was
+declined (same blocker as fix 3). Verified only that the rule applies: on `/shop/address`, which
+mounts the same widget, `margin-bottom` computes to `8px` after the upgrade.
+
 ## Source files carry no comments (2026-08-18)
 
 Stripped at the user's request, including the `# -*- coding: utf-8 -*-` line in the manifest (Python 3
@@ -317,6 +334,7 @@ ships. Do not re-propose it unless asked.
 | 5 | **Measured** on `/shop/cart` at 375x812 and 1280x800: qty 4→5→6 moved the total 780 → 975 → 1 170 and the recap followed (`4 x 195,00` → `4 x 243,75` → `4 x 292,50`); the minus button back to 5 followed too. No stray `body > .product_price`. The modal read `Total 975,00 €`. |
 | 5b | **Measured** at 375x812 (logo and recap both at `x=28`; border-top and margin now match the product card) and 1280x800 (pill unchanged, border-top normalised). |
 | 5c | **Measured** at 992, 1920 and 375, on **all five plans** (2x/3x/4x/10x/12x). No clipping, nothing past the padding box, card fills the summary column. |
+| 5d | Rule **applied** (`margin-bottom` computes to `8px` on `/shop/address`); the checkout page itself is **not** rendered - address required. |
 | 5 | Re-verified after the comment strip: qty 5→6 moved the total to 1 170,00 € and the recap to `12 x 97,50 €`, no stray `body > .product_price`. |
 
 `/mconfort/alma/widget/schedule` answers from this box now, credit plans included, so fix 4 is no
