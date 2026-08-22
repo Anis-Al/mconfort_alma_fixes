@@ -15,6 +15,7 @@ attribute written by the parent's JS.
 | `views/checkout_1x_badge.xml` | 7 (the missing 1x badge at checkout) |
 | `views/checkout_1x_logo.xml` + `static/src/img/p1x_logo.svg` | 8 (the 1x logo had no plan chip) |
 | `static/src/js/alma_payment_form.js` (removes `dt_payment_alma/static/src/js/payment_form.js`) | 10 (payment redirect broken — old Widget API crashes bundle) |
+| `models/payment_transaction.py` | 11 (guest checkout redirect failure — safe lang context, hierarchical customer data, proper error handling) |
 
 Read the fixes in order. **5b is superseded by 5c** — it is kept because it records what the parent
 does and why, not because its rules still stand.
@@ -461,6 +462,26 @@ clickable. Verify that before assuming the switch is the only way in:
 Verified after the upgrade: the rule is in the bundle, and a stub
 `.o_payment_form li.o-mconfort-alma-option > .o-mconfort-alma-plan-switch` computes `display: none`
 in the browser. The rendered checkout is still **blind** - same address blocker as fixes 3 and 6-8.
+
+## Fix 11 — payment redirect broken on guest checkout (2026-08-22)
+
+When a customer clicked **Confirm Payment** on `/shop/payment` without being logged in (guest session), the page stayed on `/shop/payment` instead of redirecting to the Alma payment gateway.
+
+### Causes:
+1. **Crash on `user_lang`:** `dt_payment_alma/payment_transaction.py` passed `self.env.context.get('lang')` to `alma_utils.get_language_code()`. In guest sessions, context `lang` is `None`, so `user_lang.split('_')` raised an unhandled `AttributeError: 'NoneType' object has no attribute 'split'`, crashing the `/payment/transaction` RPC with a 500 error before talking to Alma.
+2. **Missing guest partner fallbacks:** Phone and email were read from `self.partner_id.phone` instead of checking the transaction fields (`self.partner_phone`, `self.partner_email`) and sale order invoice/shipping partners (`order.partner_invoice_id.phone`).
+3. **Empty addresses & country defaults:** Many Mayotte orders have `partner.country_id = False`, and `format_address` passed the merchant company name (`M'Confort`) instead of the partner company name, and sent empty `{}` dictionaries to Alma's `customer.addresses`.
+4. **Silent form reload on failure:** If Alma eligibility was `False` or if `payments.create` returned no URL, `dt_payment_alma` silently returned without `api_url`. Odoo rendered `<form action="None" method="get">`, which the frontend submitted back to `/shop/payment`, reloading the page without redirecting or showing an error.
+
+### Implementation:
+`models/payment_transaction.py` inherits `payment.transaction` and overrides `_get_specific_rendering_values`:
+- If `self.provider_code != 'alma'`, delegates to `super()`.
+- If `self.provider_code == 'alma'`, intercepts and handles the Alma payload safely:
+  - Resolves `lang` with fallback: `self.env.context.get('lang') or self.partner_id.lang or self.env.lang or 'fr_FR'`.
+  - Hierarchical resolution for customer name, email, and phone (`self.partner_phone or inv_partner.phone or self.partner_id.phone`).
+  - Safe address formatting with `'FR'` fallback for Mayotte / unset country codes, and filters out empty dictionaries from `customer.addresses`.
+  - Explicit error handling: logs warnings/exceptions and raises `ValidationError` with Alma reasons if ineligible or creation fails, preventing silent blank form reloads.
+  - Updates `processing_values['api_url'] = payment.url`.
 
 ## Source files carry no comments (2026-08-18)
 
