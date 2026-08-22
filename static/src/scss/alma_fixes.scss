@@ -75,9 +75,20 @@
     }
 }
 
-.o_payment_form li[name="o_payment_option"].o-mconfort-alma-option.o-mconfort-alma-group-current
+// Fix 11 — hide the installment schedule (dates + amounts) and the
+// pm_sudo.description text from all Alma option cards.
+// The [name="alma_description"] block is hidden regardless of grouping
+// (the previous rule only covered .o-mconfort-alma-group-current).
+// The .w-100.mb-0.ms-4.small.text-600 block is the pm_sudo.description
+// rendered by dt_payment_alma's payment_alma_method_form override.
+.o_payment_form li[name="o_payment_option"].o-mconfort-alma-option {
     [name="alma_description"] {
-    display: none !important;
+        display: none !important;
+    }
+
+    .w-100.mb-0.ms-4.small.text-600 {
+        display: none !important;
+    }
 }
 
 .o_payment_form li[name="o_payment_option"].o-mconfort-alma-option .o-mconfort-alma-plan-switch {

@@ -2,6 +2,7 @@
 
 Odoo 19 module. Corrections to the Alma widget shipped by `mconfort_alma_widgets`.
 Assets, plus one inherited view since fix 7 — still no models and no data.
+Also removes and replaces the broken `dt_payment_alma/payment_form.js` (fix 10).
 
 Depends on `mconfort_alma_widgets`, so its bundle entries load **after** the parent's and win at
 equal specificity. Nothing here uses `!important` except where it must beat an inline `style`
@@ -13,6 +14,7 @@ attribute written by the parent's JS.
 | `static/src/js/alma_qty.js` | 2 (amount follows the qty box), 5 (cart amount follows the cart qty), 6 (the 1x label at checkout) |
 | `views/checkout_1x_badge.xml` | 7 (the missing 1x badge at checkout) |
 | `views/checkout_1x_logo.xml` + `static/src/img/p1x_logo.svg` | 8 (the 1x logo had no plan chip) |
+| `static/src/js/alma_payment_form.js` (removes `dt_payment_alma/static/src/js/payment_form.js`) | 10 (payment redirect broken — old Widget API crashes bundle) |
 
 Read the fixes in order. **5b is superseded by 5c** — it is kept because it records what the parent
 does and why, not because its rules still stand.

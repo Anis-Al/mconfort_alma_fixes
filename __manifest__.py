@@ -17,6 +17,8 @@
         "web.assets_frontend": [
             "mconfort_alma_fixes/static/src/scss/alma_fixes.scss",
             "mconfort_alma_fixes/static/src/js/alma_qty.js",
+            ("remove", "dt_payment_alma/static/src/js/payment_form.js"),
+            "mconfort_alma_fixes/static/src/js/alma_payment_form.js",
         ],
     },
     "installable": True,
